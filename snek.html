@@ -1,0 +1,245 @@
+<html>
+	<head>
+	<title>Snake</title>
+	
+	<style>
+		#canvas {
+			background-color: black;
+		}
+	</style>
+	</head>
+	
+	<body>
+		<canvas id="canvas" height="500" width="500">
+			
+		</canvas>
+	</body>
+	
+	
+	<script type="text/javascript">
+		let canvas = document.getElementById("canvas");
+		let ctx = canvas.getContext("2d");
+		let blockSize = 10;
+		let lastKey;
+		
+		let controls = {
+			'LEFT' : 37,
+			'DOWN' : 38,
+			'RIGHT' : 39,
+			'UP' : 40
+		}
+		
+		let directions = {
+			'LEFT' : {x : -1, y : 0},
+			'DOWN' : {x : 0, y : -1},
+			'RIGHT' : {x : 1, y : 0},
+			'UP' : {x : 0, y : 1}
+		}
+		
+		let food = (function() {
+			let x;
+			let y;
+			
+			function isValidPosition() {
+				let _snake = snake.getPosition();
+				for(let c = 0; c < _snake.length; c++) {
+					if(x === _snake[c].x
+						&& y === _snake[c].y) {
+						return false;	
+					}
+				}
+				
+				return true;
+			}
+			
+			function generatePosition() {
+				return Math.floor(Math.random() * (50 - 0)) * 10;
+			}
+			
+			function spawn() {
+				x = generatePosition();
+				y = generatePosition();
+				
+				if(!isValidPosition()) {
+					spawn();
+				}
+			}
+			
+			function getPosition() {
+				return {
+					x : x,
+					y : y
+				}
+			}
+			
+			function draw() {
+				screen.render([{x: x, y: y}], 'food');
+			}
+			
+			return {
+				spawn: spawn,
+				getPosition: getPosition,
+				draw: draw
+			}
+		})();
+
+		let screen = (function() {
+			function setSnake(_x, _y) {
+				ctx.fillStyle = "#FFF";
+				ctx.fillRect(_x, _y, blockSize, blockSize);
+			}
+			
+			function setFood(_x, _y) {
+				ctx.fillStyle = "#F00";
+				ctx.fillRect(_x, _y, blockSize, blockSize);
+			}
+			
+			function clear() {
+				ctx.fillStyle = "#000";
+				ctx.fillRect(0, 0, 500, 500);
+			}
+			
+			function render(points, type) {
+				if(type === 'snake') {
+					for(let c = 0; c < points.length; c++) {
+						setSnake(points[c].x, points[c].y);
+					}
+				} else if (type === 'food') {
+					for(let c = 0; c < points.length; c++) {
+						setFood(points[c].x, points[c].y);
+					}
+				}
+			}
+			
+			return {
+				clearScreen: clear,
+				render: render
+			}
+		})();
+		
+		let snake = (function() {
+			let tail = [];
+			let x = 0;
+			let xspeed = 0;
+			let y = 0;
+			let yspeed = 0;
+			
+			function init() {
+				xspeed = 1;
+				tail[0] = {x: 0, y: 0};
+				screen.render(tail, 'snake');
+			}
+			
+			function shiftPosition() {
+				let length = tail.length;
+				let lastPos = tail[tail.length - 1];
+				
+				for(let c = 0; c < length; c++) {
+					tail[c] = tail[c + 1];
+				}
+				
+				tail.pop();
+			}
+			
+			function draw() {
+				//then compute for next position
+				x += xspeed * blockSize;
+				y += yspeed * blockSize;
+				//check if hits self
+				for(let c = 0; c < tail.length; c++) {
+					if(x === tail[c].x
+						&& y === tail[c].y) {
+						return false;
+					}
+				}
+				//get food position
+				let foodPos = food.getPosition();
+				//if snake hits a food
+				if(x === foodPos.x && y === foodPos.y) {
+					tail.push({x : foodPos.x, y: foodPos.y});
+					food.spawn();
+				}
+				
+				tail.push({x: x, y: y});
+				//shift array block
+				shiftPosition();
+				
+				//re-render snake on screen
+				screen.render(tail, 'snake');
+				
+				return true;
+			}
+			
+			function getPosition() {
+				return tail;
+			}
+			
+			function setDirection(dir) {
+				xspeed = dir.x;
+				yspeed = dir.y;
+			}
+			
+			return {
+				init: init,
+				draw: draw,
+				setDirection: setDirection,
+				getPosition: getPosition
+			};
+		})();
+		
+		function isValidKey(key) {
+			
+			let isValid = true;
+			if(lastKey !== key) {
+				if(key === controls.UP && lastKey === controls.DOWN) {
+					isValid = false;
+				} else if (key === controls.DOWN && lastKey === controls.UP) {
+					isValid = false;
+				} else if (key === controls.LEFT && lastKey === controls.RIGHT) {
+					isValid = false;
+				} else if (key === controls.RIGHT && lastKey === controls.LEFT) {
+					isValid = false;
+				}
+			}
+			
+			return isValid;
+		}
+		
+		(function() {
+			start();
+			
+			//initialize the game;
+			function start() {
+				snake.init();
+				food.spawn();
+				
+				let drawInterval = setInterval(()=> {
+					//clear the screen
+					screen.clearScreen();
+					
+					let snakeObj = snake.draw();
+					let foodObj = food.draw();
+					if(!snakeObj) {
+						alert('Dead! Reload page to continue.');
+						clearInterval(drawInterval);
+					}
+				}, 100);
+			}
+			
+			//initialize arrow controls
+			document.addEventListener('keydown', function(e) {
+				if(isValidKey(e.keyCode)) {
+					for(let dir of Object.keys(controls)) {
+						let key = controls[dir];
+						if(e.keyCode === key) {
+							snake.setDirection(directions[dir]);
+						}
+					}
+					
+					lastKey = e.keyCode;
+				}
+			});
+		})();
+		
+	</script>
+</html>
